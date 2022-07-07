@@ -1,0 +1,5 @@
+{
+    "orig_data_base_dir": "orig_datasets/",
+    "data_base_dir": "datasets/",
+    "data_list_file_path": "LUNA16_datasplit/original/dataset_fold0.json"
+}
