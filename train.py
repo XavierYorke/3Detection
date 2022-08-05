@@ -71,7 +71,7 @@ def main():
     # 1. define transform
     intensity_transform = ScaleIntensityRanged(
         keys=["image"],
-        a_min=-1024,
+        a_min=0.0,
         a_max=300.0,
         b_min=0.0,
         b_max=1.0,

@@ -1,0 +1,7 @@
+{
+    "model_path": "trained_models/model.pt",
+    "data_base_dir": "F:/Datasets/CUDA2020/train/",
+    "data_list_file_path": "config/nodules.json",
+    "tfevent_path": "tfevent_train/event001",
+    "result_list_file_path": "result/result.json"
+}
