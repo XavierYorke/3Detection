@@ -23,7 +23,7 @@ def main():
     parser.add_argument(
         "-e",
         "--environment-file",
-        default="./config/environment_luna16_prepare.json",
+        default="./config/prepare_temp.json",
         help="environment json file that stores environment path",
     )
     parser.add_argument(
@@ -74,7 +74,7 @@ def main():
     )
 
     # 2. prepare data
-    for data_list_key in ["training", "validation"]:
+    for data_list_key in ["training"]:  # , "validation"
         # create a data loader
         process_data = load_decathlon_datalist(
             args.data_list_file_path,

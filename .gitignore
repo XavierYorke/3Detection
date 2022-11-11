@@ -1,2 +1,6 @@
 trained_models/
 tfevent_train/
+*.json
+*.pt
+dataset_conversion/files/
+out/

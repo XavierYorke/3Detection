@@ -5,7 +5,7 @@ import logging
 import sys
 import time
 
-import cv2
+import os
 import numpy as np
 import torch
 from generate_transforms import (
@@ -43,7 +43,7 @@ def main():
     parser.add_argument(
         "-c",
         "--config-file",
-        default="./config/config_train.json",
+        default="./config/config_train_luna16_16g.json",
         help="config json file that stores hyper-parameters",
     )
     args = parser.parse_args()
@@ -71,7 +71,7 @@ def main():
     # 1. define transform
     intensity_transform = ScaleIntensityRanged(
         keys=["image"],
-        a_min=0.0,
+        a_min=-1024.0,
         a_max=300.0,
         b_min=0.0,
         b_max=1.0,
@@ -85,7 +85,7 @@ def main():
         intensity_transform,
         args.patch_size,
         args.batch_size,
-        affine_lps_to_ras=True,
+        affine_lps_to_ras=False,
         amp=amp,
     )
 
@@ -95,7 +95,7 @@ def main():
         "label",
         args.gt_box_mode,
         intensity_transform,
-        affine_lps_to_ras=True,
+        affine_lps_to_ras=False,
         amp=amp,
     )
 
@@ -143,7 +143,7 @@ def main():
     # base_anchor_shapes: anchor shape for the most high-resolution output,
     #   when target boxes are small, set it smaller
     anchor_generator = AnchorGeneratorWithAnchorShape(
-        feature_map_scales=[2**l for l in range(len(args.returned_layers) + 1)],
+        feature_map_scales=[2 ** l for l in range(len(args.returned_layers) + 1)],
         base_anchor_shapes=args.base_anchor_shapes,
     )
 
@@ -225,10 +225,13 @@ def main():
     optimizer.step()
 
     # initialize tensorboard writer
-    tensorboard_writer = SummaryWriter(args.tfevent_path)
+    event_path = os.path.join(args.tfevent_path + '_train', time.strftime('%Y-%m-%d-%H-%M-%S'))
+    if not os.path.exists(event_path):
+        os.makedirs(event_path)
+    tensorboard_writer = SummaryWriter(event_path)
 
     # 5. train
-    val_interval = 5  # do validation every val_interval epochs
+    val_interval = 1  # do validation every val_interval epochs
     coco_metric = COCOMetric(classes=["nodule"], iou_list=[0.1], max_detection=[100])
     best_val_epoch_metric = 0.0
     best_val_epoch = -1  # the epoch that gives best validation metrics
@@ -240,8 +243,6 @@ def main():
     )  # weight between classification loss and box regression loss, default 1.0
     for epoch in range(max_epochs):
         # ------------- Training -------------
-        print("-" * 10)
-        print(f"epoch {epoch + 1}/{max_epochs}")
         detector.train()
         epoch_loss = 0
         epoch_cls_loss = 0
@@ -273,8 +274,8 @@ def main():
                 with torch.cuda.amp.autocast():
                     outputs = detector(inputs, targets)
                     loss = (
-                        w_cls * outputs[detector.cls_key]
-                        + outputs[detector.box_reg_key]
+                            w_cls * outputs[detector.cls_key]
+                            + outputs[detector.box_reg_key]
                     )
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
@@ -289,13 +290,13 @@ def main():
             epoch_loss += loss.detach().item()
             epoch_cls_loss += outputs[detector.cls_key].detach().item()
             epoch_box_reg_loss += outputs[detector.box_reg_key].detach().item()
-            print(f"{step}/{epoch_len}, train_loss: {loss.item():.4f}")
+            print(f"epoch: {epoch + 1}/{max_epochs}, step: {step}/{epoch_len}, train_loss: {loss.item():.4f}")
             tensorboard_writer.add_scalar(
                 "train_loss", loss.detach().item(), epoch_len * epoch + step
             )
 
         end_time = time.time()
-        print(f"Training time: {end_time-start_time}s")
+        print(f"Training time: {end_time - start_time}s")
         del inputs, batch_data
         torch.cuda.empty_cache()
         gc.collect()
@@ -315,7 +316,7 @@ def main():
         )
 
         # save last trained model
-        torch.jit.save(detector.network,env_dict["model_path"][:-3] + "_last.pt")
+        torch.jit.save(detector.network, env_dict["model_path"][:-3] + "_last.pt")
         print("saved last model")
 
         # ------------- Validation for model selection -------------
@@ -350,16 +351,16 @@ def main():
                     val_targets_all += val_data
 
             end_time = time.time()
-            print(f"Validation time: {end_time-start_time}s")
+            print(f"Validation time: {end_time - start_time}s")
 
             # visualize an inference image and boxes to tensorboard
             draw_img = visualize_one_xy_slice_in_3d_image(
                 gt_boxes=val_data[0]["box"].cpu().detach().numpy(),
                 image=val_inputs[0][0, ...].cpu().detach().numpy(),
                 pred_boxes=val_outputs[0][detector.target_box_key]
-                .cpu()
-                .detach()
-                .numpy(),
+                    .cpu()
+                    .detach()
+                    .numpy(),
             )
             tensorboard_writer.add_image(
                 "val_img_xy", draw_img.transpose([2, 1, 0]), epoch + 1
@@ -408,7 +409,7 @@ def main():
             if val_epoch_metric > best_val_epoch_metric:
                 best_val_epoch_metric = val_epoch_metric
                 best_val_epoch = epoch + 1
-                torch.jit.save(detector.network, env_dict["model_path"])
+                torch.jit.save(detector.network, os.path.join(event_path, env_dict["model_path"]))
                 print("saved new best metric model")
             print(
                 "current epoch: {} current metric: {:.4f} "
