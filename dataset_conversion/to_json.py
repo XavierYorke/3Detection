@@ -2,78 +2,49 @@
 # -*- encoding: utf-8 -*-
 '''
 @Time    :   2022/09/24 17:03:34
-@Author  :   XavierYorke 
+@Author  :   XavierYorke
 @Contact :   mzlxavier1230@gmail.com
 '''
 
 import csv
 import os
+import pandas as pd
+import json
 
 
 # 将csv文件转为LUNA16的json格式
 def csv2json(csv_path, json_path):
-    csv_file = open(csv_path, 'r')
-    csv_reader = csv.reader(csv_file)
-    json_file = open(json_path, 'w')
-    json_file.write('[')
-    pre_row = 'temp'
-    count_L = -1
-    flag = 1
-    for row in csv_reader:
-        if flag:
-            json_file.write('{')
-            json_file.write('"box": [')
-            flag = 0
-
-        if pre_row == 'temp':
-            pre_row = row[0]
-
-        json_file.write('[' + row[1] + ',' + row[2] + ',' +
-                        row[3] + ',' + row[4] + ',' + row[4] + ',' + row[4] + '],')
-        count_L += 1
-        if row[0] != pre_row:
-            json_file.close()
-            with open(json_path, "rb+") as f:
-
-                f.seek(-1, os.SEEK_END)
-                f.truncate()
-                f.close()
-            json_file = open(json_path, 'a+')
-            json_file.write('],')
-
-            json_file.write(
-                # '"image": "' + row[0] + '/' + row[0] + '_origin.nii.gz' + '",')
-                '"image": "' + row[0] + '/' + row[0] + '.nii.gz' + '",')
-            json_file.write('"label": [')
-            for _ in range(count_L):
-                json_file.write('0,')
-            json_file.write('0]')
-            json_file.write('}')
-            json_file.write(',')
-            count_L = -1
-            pre_row = row[0]
-            flag = 1
-
-    json_file.write('],')
-    json_file.write(
-        # '"image": "' + row[0] + '/' + row[0] + '_origin.nii.gz' + '",')
-        '"image": "' + row[0] + '/' + row[0] + '.nii.gz' + '",')
-    json_file.write('"label": [')
-    for _ in range(count_L):
-        json_file.write('0,')
-    json_file.write('0]')
-    json_file.write('}')
-    json_file.write(',')
-    count_L = -1
-    pre_row = row[0]
-
-    json_file.write(']')
-    csv_file.close()
-    json_file.close()
+    csv_file = pd.read_csv(csv_path, names=[0, 1, 2, 3, 4])
+    files = sorted(list(set(csv_file[0].tolist())))
+    aim_train = int(0.9 * len(files))
+    row0 = files[0]
+    count = 0
+    train = 0
+    result_dict = {"training": [], "validation": []}
+    result = {"box": []}
+    for _, row in csv_file.iterrows():
+        if row[0] != row0:
+            result.update({"image": row0 + '/' + row0 + '.nii.gz'})
+            result.update({"label": [0] * count})
+            if train < aim_train:
+                result_dict["training"].append(result)
+            else:
+                result_dict["validation"].append(result)
+            count = 0
+            row0 = row[0]
+            train += 1
+            result = {"box": []}
+        result["box"].append([float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[4]), float(row[4])])
+        count += 1
+    result.update({"image": row0 + '/' + row0 + '.nii.gz'})
+    result.update({"label": [0] * count})
+    result_dict["validation"].append(result)
+    with open(json_path, "w") as outfile:
+        json.dump(result_dict, outfile, indent=4)
 
 
 if __name__ == '__main__':
     file_name = 'lung_100'
     csv_path = './files/' + file_name + '.csv'
-    json_path = '../config/' + file_name + '.json'
+    json_path = '../config/' + file_name + '_test.json'
     csv2json(csv_path, json_path)
