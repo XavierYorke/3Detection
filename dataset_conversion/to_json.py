@@ -17,6 +17,7 @@ def csv2json(csv_path, json_path):
     csv_file = pd.read_csv(csv_path, names=[0, 1, 2, 3, 4])
     files = sorted(list(set(csv_file[0].tolist())))
     aim_train = int(0.9 * len(files))
+    suffix = '_origin.nii.gz'
     row0 = files[0]
     count = 0
     train = 0
@@ -24,7 +25,7 @@ def csv2json(csv_path, json_path):
     result = {"box": []}
     for _, row in csv_file.iterrows():
         if row[0] != row0:
-            result.update({"image": row0 + '/' + row0 + '.nii.gz'})
+            result.update({"image": row0 + '/' + row0 + suffix})
             result.update({"label": [0] * count})
             if train < aim_train:
                 result_dict["training"].append(result)
@@ -36,7 +37,7 @@ def csv2json(csv_path, json_path):
             result = {"box": []}
         result["box"].append([float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[4]), float(row[4])])
         count += 1
-    result.update({"image": row0 + '/' + row0 + '.nii.gz'})
+    result.update({"image": row0 + '/' + row0 + suffix})
     result.update({"label": [0] * count})
     result_dict["validation"].append(result)
     with open(json_path, "w") as outfile:
@@ -44,7 +45,7 @@ def csv2json(csv_path, json_path):
 
 
 if __name__ == '__main__':
-    file_name = 'lung_100'
+    file_name = 'lung'
     csv_path = './files/' + file_name + '.csv'
-    json_path = '../config/' + file_name + '_test.json'
+    json_path = '../config/' + file_name + '.json'
     csv2json(csv_path, json_path)

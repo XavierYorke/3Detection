@@ -24,5 +24,5 @@ python luna16_training.py \
 
 ## 查看日志
 ``` bash
-tensorboard --logdir=tfevent_train/event002
+tensorboard --logdir 
 ```

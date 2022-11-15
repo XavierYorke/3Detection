@@ -59,10 +59,11 @@ def generate_detection_train_transform(image_key, box_key, label_key, gt_box_mod
     train_transforms = Compose(
         [
             LoadImaged(keys=[image_key], meta_key_postfix="meta_dict"),
+
             EnsureChannelFirstd(keys=[image_key]),
             EnsureTyped(keys=[image_key, box_key], dtype=torch.float32),
             EnsureTyped(keys=[label_key], dtype=torch.long),
-            Orientationd(keys=[image_key], axcodes="RAS"),
+            Orientationd(keys=[image_key], axcodes="LPS"),  # RAS
             intensity_transform,
             EnsureTyped(keys=[image_key], dtype=torch.float16),
             ConvertBoxToStandardModed(box_keys=[box_key], mode=gt_box_mode),
@@ -195,13 +196,15 @@ def generate_detection_val_transform(image_key, box_key, label_key, gt_box_mode,
     else:
         compute_dtype = torch.float32
 
+    # LoadImaged(keys=[image_key], meta_key_postfix="meta_dict", reader="itkreader", affine_lps_to_ras=True),  # True
+
     val_transforms = Compose(
         [
             LoadImaged(keys=[image_key], meta_key_postfix="meta_dict"),
             EnsureChannelFirstd(keys=[image_key]),
             EnsureTyped(keys=[image_key, box_key], dtype=torch.float32),
             EnsureTyped(keys=[label_key], dtype=torch.long),
-            Orientationd(keys=[image_key], axcodes="RAS"),
+            Orientationd(keys=[image_key], axcodes="LPS"),  # RAS
             intensity_transform,
             ConvertBoxToStandardModed(box_keys=[box_key], mode=gt_box_mode),
             AffineBoxToImageCoordinated(

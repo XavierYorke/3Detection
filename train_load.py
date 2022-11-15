@@ -4,8 +4,8 @@ import json
 import logging
 import sys
 import time
-
 import os
+import cv2
 import numpy as np
 import torch
 from generate_transforms import (
@@ -25,7 +25,7 @@ from monai.apps.detection.networks.retinanet_network import (
     resnet_fpn_feature_extractor,
 )
 from monai.apps.detection.utils.anchor_utils import AnchorGeneratorWithAnchorShape
-from monai.data import DataLoader, Dataset, box_utils, load_decathlon_datalist
+from monai.data import DataLoader, Dataset, box_utils, load_decathlon_datalist, ThreadDataLoader
 from monai.data.utils import no_collation
 from monai.networks.nets import resnet
 from monai.transforms import ScaleIntensityRanged
@@ -85,7 +85,7 @@ def main():
         intensity_transform,
         args.patch_size,
         args.batch_size,
-        affine_lps_to_ras=True,    # True
+        affine_lps_to_ras=True,
         amp=amp,
     )
 
@@ -95,7 +95,7 @@ def main():
         "label",
         args.gt_box_mode,
         intensity_transform,
-        affine_lps_to_ras=True,    # True
+        affine_lps_to_ras=True,
         amp=amp,
     )
 
@@ -107,20 +107,20 @@ def main():
         data_list_key="training",
         base_dir=args.data_base_dir,
     )
-
     train_ds = Dataset(
         data=train_data[: int(0.95 * len(train_data))],
         transform=train_transforms,
     )
-    train_loader = DataLoader(
+    train_loader = ThreadDataLoader(
         train_ds,
         batch_size=1,
-        shuffle=False,
+        shuffle=True,
         num_workers=7,
         pin_memory=torch.cuda.is_available(),
         collate_fn=no_collation,
         persistent_workers=True,
     )
+    #train_loader = ThreadDataLoader(train_ds, batch_size=2, shuffle=False, num_workers=4)
 
     # create a validation data loader
     val_ds = Dataset(
@@ -149,36 +149,41 @@ def main():
     )
 
     # 2) build network
-    conv1_t_size = [max(7, 2 * s + 1) for s in args.conv1_t_stride]
-    backbone = resnet.ResNet(
-        block=resnet.ResNetBottleneck,
-        layers=[3, 4, 6, 3],
-        block_inplanes=resnet.get_inplanes(),
-        n_input_channels=args.n_input_channels,
-        conv1_t_stride=args.conv1_t_stride,
-        conv1_t_size=conv1_t_size,
-    )
-    feature_extractor = resnet_fpn_feature_extractor(
-        backbone=backbone,
-        spatial_dims=args.spatial_dims,
-        pretrained_backbone=False,
-        trainable_backbone_layers=None,
-        returned_layers=args.returned_layers,
-    )
-    num_anchors = anchor_generator.num_anchors_per_location()[0]
-    size_divisible = [
-        s * 2 * 2 ** max(args.returned_layers)
-        for s in feature_extractor.body.conv1.stride
-    ]
-    net = torch.jit.script(
-        RetinaNet(
-            spatial_dims=args.spatial_dims,
-            num_classes=len(args.fg_labels),
-            num_anchors=num_anchors,
-            feature_extractor=feature_extractor,
-            size_divisible=size_divisible,
-        )
-    )
+    # conv1_t_size = [max(7, 2 * s + 1) for s in args.conv1_t_stride]
+    # backbone = resnet.ResNet(
+    #     block=resnet.ResNetBottleneck,
+    #     layers=[3, 4, 6, 3],
+    #     block_inplanes=resnet.get_inplanes(),
+    #     n_input_channels=args.n_input_channels,
+    #     conv1_t_stride=args.conv1_t_stride,
+    #     conv1_t_size=conv1_t_size,
+    # )
+    # feature_extractor = resnet_fpn_feature_extractor(
+    #     backbone=backbone,
+    #     spatial_dims=args.spatial_dims,
+    #     pretrained_backbone=False,
+    #     trainable_backbone_layers=None,
+    #     returned_layers=args.returned_layers,
+    # )
+    # num_anchors = anchor_generator.num_anchors_per_location()[0]
+    # size_divisible = [
+    #     s * 2 * 2 ** max(args.returned_layers)
+    #     for s in feature_extractor.body.conv1.stride
+    # ]
+    # net = torch.jit.script(
+    #     RetinaNet(
+    #         spatial_dims=args.spatial_dims,
+    #         num_classes=len(args.fg_labels),
+    #         num_anchors=num_anchors,
+    #         feature_extractor=feature_extractor,
+    #         size_divisible=size_divisible,
+    #     )
+    # )
+
+    net = torch.jit.load(
+        'F:/Projects/Detection_Demo/tfevent_train/luna16_test_train/2022-10-14-16-38-16-base/model_luna16_fold0.pt')\
+        .to(device)
+    print(f"Load model from {env_dict['model_path']}")
 
     # 3) build detector
     detector = RetinaNetDetector(
@@ -221,15 +226,16 @@ def main():
     )
     after_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=150, gamma=0.1)
     scheduler_warmup = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=10, after_scheduler=after_scheduler)
+
+    # 对于反向传播的时候，FP16 的梯度数值溢出的问题，
+    # amp 提供了梯度 scaling 操作，而且在优化器更新参数前，会自动对梯度 unscaling，
+    # 所以，对用于模型优化的超参数不会有任何影响
     scaler = torch.cuda.amp.GradScaler() if amp else None
     optimizer.zero_grad()
     optimizer.step()
 
     # initialize tensorboard writer
-    event_path = os.path.join(args.tfevent_path + '_train', time.strftime('%Y-%m-%d-%H-%M-%S'))
-    if not os.path.exists(event_path):
-        os.makedirs(event_path)
-    tensorboard_writer = SummaryWriter(event_path)
+    tensorboard_writer = SummaryWriter(os.path.join(args.tfevent_path + '_load', time.strftime('%Y-%m-%d-%H-%M-%S')))
 
     # 5. train
     val_interval = 1  # do validation every val_interval epochs
@@ -244,6 +250,8 @@ def main():
     )  # weight between classification loss and box regression loss, default 1.0
     for epoch in range(max_epochs):
         # ------------- Training -------------
+        print("-" * 10)
+        print(f"epoch {epoch + 1}/{max_epochs}")
         detector.train()
         epoch_loss = 0
         epoch_cls_loss = 0
@@ -291,7 +299,8 @@ def main():
             epoch_loss += loss.detach().item()
             epoch_cls_loss += outputs[detector.cls_key].detach().item()
             epoch_box_reg_loss += outputs[detector.box_reg_key].detach().item()
-            print(f"epoch: {epoch + 1}/{max_epochs}, step: {step}/{epoch_len}, train_loss: {loss.item():.4f}")
+            if step %50 == 0:
+                print(f"{step}/{epoch_len}, train_loss: {loss.item():.4f}")
             tensorboard_writer.add_scalar(
                 "train_loss", loss.detach().item(), epoch_len * epoch + step
             )
@@ -410,7 +419,7 @@ def main():
             if val_epoch_metric > best_val_epoch_metric:
                 best_val_epoch_metric = val_epoch_metric
                 best_val_epoch = epoch + 1
-                torch.jit.save(detector.network, os.path.join(event_path, env_dict["model_path"]))
+                torch.jit.save(detector.network, env_dict["model_path"])
                 print("saved new best metric model")
             print(
                 "current epoch: {} current metric: {:.4f} "

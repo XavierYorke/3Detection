@@ -58,13 +58,13 @@ def main():
     parser.add_argument(
         "--input_dataset_json",
         type=str,
-        default='result/AnYanSen20201102-raw.json',
+        default='config/CJX.json',
         help="the dataset .json with box information",
     )
     parser.add_argument(
         "--output_dir",
         type=str,
-        default='./out/lung-AnYanSen20201102-raw',
+        default='./out/CJX',
         help="output directory",
     )
     args = parser.parse_args()
