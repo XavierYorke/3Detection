@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
+"""
 @Time    :   2022/06/24 23:02:14
 @Author  :   XavierYorke
 @Contact :   mzlxavier1230@gmail.com
-'''
+"""
 
 import numpy as np
 import os
@@ -27,7 +27,7 @@ def modify_folders():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Modify file names in bulk')
-    parser.add_argument('-d', '--dir', type=str, default='D:/Datasets/Lung/lung_resample', help='file dir')
+    parser.add_argument('-d', '--dir', type=str, default='D:/Datasets/Aneurysm_resample', help='file dir')
     parser.add_argument('-o', '--output', type=str, default='', help='output dir')
     args = parser.parse_args()
     modify_folders()

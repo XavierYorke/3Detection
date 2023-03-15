@@ -58,13 +58,13 @@ def main():
     parser.add_argument(
         "--input_dataset_json",
         type=str,
-        default='config/CJX.json',
+        default='result/liyihong.json',
         help="the dataset .json with box information",
     )
     parser.add_argument(
         "--output_dir",
         type=str,
-        default='./out/CJX',
+        default='./out/liyihong',
         help="output directory",
     )
     args = parser.parse_args()

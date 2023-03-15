@@ -317,7 +317,7 @@ def main():
         )
 
         # save last trained model
-        torch.jit.save(detector.network, env_dict["model_path"][:-3] + "_last.pt")
+        torch.jit.save(detector.network, os.path.join(event_path, env_dict["model_path"][:-3] + "_last.pt"))
         print("saved last model")
 
         # ------------- Validation for model selection -------------

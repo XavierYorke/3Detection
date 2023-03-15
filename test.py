@@ -39,7 +39,7 @@ def main():
     parser.add_argument(
         "-e",
         "--environment-file",
-        default="./config/environment.json",
+        default="./config/prepare.json",
         help="environment json file that stores environment path",
     )
     parser.add_argument(
@@ -117,8 +117,7 @@ def main():
 
     # 2) build network
     # net = torch.jit.load(env_dict["model_path"]).to(device)
-    model_path = \
-        'F:/Projects/Detection_Demo/tfevent_train/luna16_test_train/2022-10-14-16-38-16-base/model_luna16_fold0.pt'
+    model_path = 'F:/Projects/3Detection/tfevent_train/lung_load/2022-11-13-21-42-05/model.pt'
     net = torch.jit.load(model_path).to(device)
     print(f"Load model from {model_path}")
 
@@ -181,20 +180,37 @@ def main():
                     torch.float32
                 )
 
-
                 inference_data[i] = post_transforms(inference_data_i)
 
             for inference_img_filename, inference_pred_i in zip(inference_img_filenames, inference_data):
+                world = False
+                boxes = inference_pred_i["pred_box"].cpu().detach().numpy().tolist()
+                if not world:
+                    import SimpleITK as sitk
+                    img = sitk.ReadImage(inference_img_filename)
+                    offArr, eleArr = img.GetOrigin(), img.GetSpacing()
+                    b = []
+                    for box in boxes:
+                        x1 = (box[0] - offArr[0]) / eleArr[0] - box[3] / eleArr[0]
+                        x2 = (box[0] - offArr[0]) / eleArr[0] + box[3] / eleArr[0]
+                        y1 = (box[1] - offArr[1]) / eleArr[1] - box[4] / eleArr[1]
+                        y2 = (box[1] - offArr[1]) / eleArr[1] + box[4] / eleArr[1]
+                        z1 = (box[2] - offArr[2]) / eleArr[2] - box[5] / eleArr[2]
+                        z2 = (box[2] - offArr[2]) / eleArr[2] + box[5] / eleArr[2]
+                        box = [x1, y1, z1, x2, y2, z2]
+                        b.append(box)
+                    boxes = b
+
                 result = {
                     "label": inference_pred_i["pred_label"].cpu().detach().numpy().tolist(),
-                    "box": inference_pred_i["pred_box"].cpu().detach().numpy().tolist(),
+                    "box": boxes,
                     "score": inference_pred_i["pred_score"].cpu().detach().numpy().tolist(),
                 }
                 result.update({"image": inference_img_filename})
                 results_dict["validation"].append(result)
+            count += 1
             if count == 5:
                 break
-            count += 1
 
     end_time = time.time()
     print("Testing time: ", end_time - start_time)

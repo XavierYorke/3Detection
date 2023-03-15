@@ -45,7 +45,7 @@ def csv2json(csv_path, json_path):
 
 
 if __name__ == '__main__':
-    file_name = 'lung'
+    file_name = 'ias'
     csv_path = './files/' + file_name + '.csv'
     json_path = '../config/' + file_name + '.json'
     csv2json(csv_path, json_path)

@@ -25,7 +25,7 @@ from monai.apps.detection.networks.retinanet_network import (
     resnet_fpn_feature_extractor,
 )
 from monai.apps.detection.utils.anchor_utils import AnchorGeneratorWithAnchorShape
-from monai.data import DataLoader, Dataset, box_utils, load_decathlon_datalist, ThreadDataLoader
+from monai.data import DataLoader, Dataset, box_utils, load_decathlon_datalist, ThreadDataLoader, CacheDataset
 from monai.data.utils import no_collation
 from monai.networks.nets import resnet
 from monai.transforms import ScaleIntensityRanged
@@ -57,6 +57,8 @@ def main():
         compute_dtype = torch.float32
 
     monai.config.print_config()
+
+    # 让程序在开始时花费一点额外时间，为整个网络的每个卷积层搜索最适合它的卷积实现算法，进而实现网络的加速,适用场景是网络结构固定
     torch.backends.cudnn.benchmark = True
     torch.set_num_threads(4)
 
@@ -72,7 +74,7 @@ def main():
     intensity_transform = ScaleIntensityRanged(
         keys=["image"],
         a_min=-1024.0,
-        a_max=300.0,
+        a_max=800.0,
         b_min=0.0,
         b_max=1.0,
         clip=True,
@@ -107,20 +109,33 @@ def main():
         data_list_key="training",
         base_dir=args.data_base_dir,
     )
-    train_ds = Dataset(
-        data=train_data[: int(0.95 * len(train_data))],
-        transform=train_transforms,
-    )
+    # train_ds = Dataset(
+    #     data=train_data[: int(0.95 * len(train_data))],
+    #     transform=train_transforms,
+    # )
+    # train_loader = ThreadDataLoader(
+    #     train_ds,
+    #     batch_size=1,
+    #     shuffle=True,
+    #     num_workers=7,
+    #     pin_memory=torch.cuda.is_available(),
+    #     collate_fn=no_collation,
+    #     persistent_workers=True,
+    # )
+    train_ds = CacheDataset(data=train_data[: int(0.2 * len(train_data))],
+                            transform=train_transforms,
+                            cache_rate=1.0,
+                            num_workers=4,
+                            copy_cache=False)
     train_loader = ThreadDataLoader(
         train_ds,
         batch_size=1,
         shuffle=True,
-        num_workers=7,
+        num_workers=8,
         pin_memory=torch.cuda.is_available(),
         collate_fn=no_collation,
         persistent_workers=True,
     )
-    #train_loader = ThreadDataLoader(train_ds, batch_size=2, shuffle=False, num_workers=4)
 
     # create a validation data loader
     val_ds = Dataset(
@@ -180,9 +195,8 @@ def main():
     #     )
     # )
 
-    net = torch.jit.load(
-        'F:/Projects/Detection_Demo/tfevent_train/luna16_test_train/2022-10-14-16-38-16-base/model_luna16_fold0.pt')\
-        .to(device)
+    # net = torch.jit.load('tfevent_train/ias_load/2022-12-06-22-30-18/model.pt').to(device)
+    net = torch.jit.load('F:/Projects/3Detection/trained_models/model_luna16_fold0.pt').to(device)
     print(f"Load model from {env_dict['model_path']}")
 
     # 3) build detector
@@ -235,10 +249,13 @@ def main():
     optimizer.step()
 
     # initialize tensorboard writer
-    tensorboard_writer = SummaryWriter(os.path.join(args.tfevent_path + '_load', time.strftime('%Y-%m-%d-%H-%M-%S')))
+    event_path = os.path.join(args.tfevent_path + '_load', time.strftime('%Y-%m-%d-%H-%M-%S'))
+    if not os.path.exists(event_path):
+        os.makedirs(event_path)
+    tensorboard_writer = SummaryWriter(event_path)
 
     # 5. train
-    val_interval = 1  # do validation every val_interval epochs
+    val_interval = 10  # do validation every val_interval epochs
     coco_metric = COCOMetric(classes=["nodule"], iou_list=[0.1], max_detection=[100])
     best_val_epoch_metric = 0.0
     best_val_epoch = -1  # the epoch that gives best validation metrics
@@ -248,9 +265,9 @@ def main():
     w_cls = config_dict.get(
         "w_cls", 1.0
     )  # weight between classification loss and box regression loss, default 1.0
+
     for epoch in range(max_epochs):
         # ------------- Training -------------
-        print("-" * 10)
         print(f"epoch {epoch + 1}/{max_epochs}")
         detector.train()
         epoch_loss = 0
@@ -299,8 +316,8 @@ def main():
             epoch_loss += loss.detach().item()
             epoch_cls_loss += outputs[detector.cls_key].detach().item()
             epoch_box_reg_loss += outputs[detector.box_reg_key].detach().item()
-            if step %50 == 0:
-                print(f"{step}/{epoch_len}, train_loss: {loss.item():.4f}")
+            if step % 50 == 0:
+                print(f"epoch: {epoch + 1} | {step}/{epoch_len} | train_loss: {loss.item():.4f}")
             tensorboard_writer.add_scalar(
                 "train_loss", loss.detach().item(), epoch_len * epoch + step
             )
@@ -326,7 +343,7 @@ def main():
         )
 
         # save last trained model
-        torch.jit.save(detector.network, env_dict["model_path"][:-3] + "_last.pt")
+        torch.jit.save(detector.network, os.path.join(event_path, env_dict["model_path"][:-3] + "_last.pt"))
         print("saved last model")
 
         # ------------- Validation for model selection -------------
@@ -419,7 +436,7 @@ def main():
             if val_epoch_metric > best_val_epoch_metric:
                 best_val_epoch_metric = val_epoch_metric
                 best_val_epoch = epoch + 1
-                torch.jit.save(detector.network, env_dict["model_path"])
+                torch.jit.save(detector.network, os.path.join(event_path, env_dict["model_path"]))
                 print("saved new best metric model")
             print(
                 "current epoch: {} current metric: {:.4f} "

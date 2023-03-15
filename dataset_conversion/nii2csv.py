@@ -43,8 +43,8 @@ def nii2csv_info(nii_path, seriesuid, expand_number=2):
 
 
 if __name__ == '__main__':
-    raw_path = r'D:/Datasets/Lung/lung'
-    csv_path = './files/lung.csv'
+    raw_path = r'D:/Datasets/Aneurysm/S/one'
+    csv_path = './files/ias.csv'
 
     fid = open(csv_path, 'w', encoding='utf-8', newline='')
     csv_writer = csv.writer(fid)
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     step = 0
     for f in tqdm(files):
         origin_path = os.path.join(raw_path, f, str(f) + '_origin.nii.gz')
-        label_path = origin_path.replace('origin', 'lesion')
+        label_path = origin_path.replace('origin', 'ias')
         if os.path.exists(origin_path) and os.path.exists(label_path):
             csv_info = nii2csv_info(label_path, f, expand_number=2)
             for index in range(len(csv_info)):

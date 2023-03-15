@@ -2,6 +2,6 @@
     "model_path": "model.pt",
     "data_base_dir": "D:/Datasets/Lung/lung_resample/",
     "data_list_file_path": "config/lung.json",
-    "tfevent_path": "tfevent_train/lung",
-    "result_list_file_path": "result/lung.json"
+    "tfevent_path": "tfevent_train/lung_23",
+    "result_list_file_path": "result/lung_23.json"
 }

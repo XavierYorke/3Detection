@@ -11,8 +11,8 @@ python luna16_prepare_images.py -c ./config/config_train_luna16_16g.json
 
 ## 数据集转换
 ```bash
-python dataset_conversion/conversion.py
-python dataset_conversion/json_generation.py
+python dataset_conversion/nii2csv.py
+python dataset_conversion/to_json.py
 ```
 
 ## 训练

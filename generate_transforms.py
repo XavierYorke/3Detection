@@ -251,7 +251,7 @@ def generate_detection_inference_transform(image_key, pred_box_key, pred_label_k
             LoadImaged(keys=[image_key], meta_key_postfix="meta_dict"),
             EnsureChannelFirstd(keys=[image_key]),
             EnsureTyped(keys=[image_key], dtype=torch.float32),
-            Orientationd(keys=[image_key], axcodes="RAS"),
+            Orientationd(keys=[image_key], axcodes="LPS"),      # RAS
             intensity_transform,
             EnsureTyped(keys=[image_key], dtype=compute_dtype),
         ]

@@ -52,11 +52,11 @@ def main():
                 keys=["image"],
                 meta_key_postfix="meta_dict",
                 reader="itkreader",
-                affine_lps_to_ras=True,     # True
+                affine_lps_to_ras=True,  # True
             ),
             EnsureChannelFirstd(keys=["image"]),
             EnsureTyped(keys=["image"], dtype=torch.float16),
-            Orientationd(keys=["image"], axcodes="RAS"),       # RAS
+            Orientationd(keys=["image"], axcodes="RAS"),  # RAS
             Spacingd(keys=["image"], pixdim=args.spacing, padding_mode="border"),
         ]
     )
@@ -68,7 +68,7 @@ def main():
                 meta_keys="image_meta_dict",
                 output_dir=args.data_base_dir,
                 output_postfix="",
-                resample=False,     # False
+                resample=False,  # False
             ),
         ]
     )
