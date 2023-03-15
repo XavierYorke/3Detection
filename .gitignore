@@ -1,6 +1,5 @@
-trained_models/
-tfevent_train/
-*.json
-*.pt
-dataset_conversion/files/
-out/
+environment/
+objs/
+train_event/
+result/
+data_preparation/saved/

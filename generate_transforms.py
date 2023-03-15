@@ -25,12 +25,21 @@ from monai.apps.detection.transforms.dictionary import (
     RandFlipBoxd,
     RandRotateBox90d,
     RandZoomBoxd,
-    ConvertBoxModed
+    ConvertBoxModed,
 )
 
 
-def generate_detection_train_transform(image_key, box_key, label_key, gt_box_mode, intensity_transform, patch_size,
-                                       batch_size, affine_lps_to_ras=False, amp=True):
+def generate_detection_train_transform(
+    image_key,
+    box_key,
+    label_key,
+    gt_box_mode,
+    intensity_transform,
+    patch_size,
+    batch_size,
+    affine_lps_to_ras=False,
+    amp=True,
+):
     """
     Generate training transform for detection.
 
@@ -59,11 +68,10 @@ def generate_detection_train_transform(image_key, box_key, label_key, gt_box_mod
     train_transforms = Compose(
         [
             LoadImaged(keys=[image_key], meta_key_postfix="meta_dict"),
-
             EnsureChannelFirstd(keys=[image_key]),
             EnsureTyped(keys=[image_key, box_key], dtype=torch.float32),
             EnsureTyped(keys=[label_key], dtype=torch.long),
-            Orientationd(keys=[image_key], axcodes="LPS"),  # RAS
+            Orientationd(keys=[image_key], axcodes="RAS"),
             intensity_transform,
             EnsureTyped(keys=[image_key], dtype=torch.float16),
             ConvertBoxToStandardModed(box_keys=[box_key], mode=gt_box_mode),
@@ -80,16 +88,16 @@ def generate_detection_train_transform(image_key, box_key, label_key, gt_box_mod
                 spatial_size=patch_size,
                 whole_box=True,
                 num_samples=batch_size,
-                pos=1,
-                neg=1,
+                pos=1,      # 1
+                neg=1,      # 1
             ),
             RandZoomBoxd(
                 image_keys=[image_key],
                 box_keys=[box_key],
                 box_ref_image_keys=[image_key],
                 prob=0.2,
-                min_zoom=0.7,
-                max_zoom=1.4,
+                min_zoom=0.7,   # 0.7
+                max_zoom=1.4,   # 1.4
                 padding_mode="constant",
                 keep_size=True,
             ),
@@ -171,8 +179,15 @@ def generate_detection_train_transform(image_key, box_key, label_key, gt_box_mod
     return train_transforms
 
 
-def generate_detection_val_transform(image_key, box_key, label_key, gt_box_mode, intensity_transform,
-                                     affine_lps_to_ras=False, amp=True):
+def generate_detection_val_transform(
+    image_key,
+    box_key,
+    label_key,
+    gt_box_mode,
+    intensity_transform,
+    affine_lps_to_ras=False,
+    amp=True,
+):
     """
     Generate validation transform for detection.
 
@@ -196,15 +211,13 @@ def generate_detection_val_transform(image_key, box_key, label_key, gt_box_mode,
     else:
         compute_dtype = torch.float32
 
-    # LoadImaged(keys=[image_key], meta_key_postfix="meta_dict", reader="itkreader", affine_lps_to_ras=True),  # True
-
     val_transforms = Compose(
         [
             LoadImaged(keys=[image_key], meta_key_postfix="meta_dict"),
             EnsureChannelFirstd(keys=[image_key]),
             EnsureTyped(keys=[image_key, box_key], dtype=torch.float32),
             EnsureTyped(keys=[label_key], dtype=torch.long),
-            Orientationd(keys=[image_key], axcodes="LPS"),  # RAS
+            Orientationd(keys=[image_key], axcodes="RAS"),
             intensity_transform,
             ConvertBoxToStandardModed(box_keys=[box_key], mode=gt_box_mode),
             AffineBoxToImageCoordinated(
@@ -220,8 +233,16 @@ def generate_detection_val_transform(image_key, box_key, label_key, gt_box_mode,
     return val_transforms
 
 
-def generate_detection_inference_transform(image_key, pred_box_key, pred_label_key, pred_score_key, gt_box_mode,
-                                           intensity_transform, affine_lps_to_ras=False, amp=True):
+def generate_detection_inference_transform(
+    image_key,
+    pred_box_key,
+    pred_label_key,
+    pred_score_key,
+    gt_box_mode,
+    intensity_transform,
+    affine_lps_to_ras=False,
+    amp=True,
+):
     """
     Generate validation transform for detection.
 
@@ -251,7 +272,7 @@ def generate_detection_inference_transform(image_key, pred_box_key, pred_label_k
             LoadImaged(keys=[image_key], meta_key_postfix="meta_dict"),
             EnsureChannelFirstd(keys=[image_key]),
             EnsureTyped(keys=[image_key], dtype=torch.float32),
-            Orientationd(keys=[image_key], axcodes="LPS"),      # RAS
+            Orientationd(keys=[image_key], axcodes="RAS"),
             intensity_transform,
             EnsureTyped(keys=[image_key], dtype=compute_dtype),
         ]

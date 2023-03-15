@@ -37,14 +37,14 @@ def nii2csv_info(nii_path, seriesuid, expand_number=2):
         x = int((bbox[3] + bbox[0]) / 2) * eleArr[0] + offArr[0]
         y = int((bbox[4] + bbox[1]) / 2) * eleArr[1] + offArr[1]
         z = int((bbox[5] + bbox[2]) / 2) * eleArr[2] + offArr[2]
-        # 将获得的信息写如到csv文件中
+        # 将获得的信息写到csv文件中
         out_list.append([str(seriesuid), str(x), str(y), str(z), str(r)])
     return out_list
 
 
 if __name__ == '__main__':
-    raw_path = r'D:/Datasets/Aneurysm/S/one'
-    csv_path = './files/ias.csv'
+    raw_path = r'D:/Datasets/IAS-S/Image'
+    csv_path = '../environment/ias/test.csv'
 
     fid = open(csv_path, 'w', encoding='utf-8', newline='')
     csv_writer = csv.writer(fid)
@@ -52,16 +52,24 @@ if __name__ == '__main__':
 
     files = sorted(os.listdir(raw_path))
     step = 0
+    data = 'IAS'
     for f in tqdm(files):
-        origin_path = os.path.join(raw_path, f, str(f) + '_origin.nii.gz')
-        label_path = origin_path.replace('origin', 'ias')
+        if data == 'IAS':
+            origin_path = os.path.join(raw_path, f, str(f) + '_origin.nii.gz')
+            label_path = origin_path.replace('origin', 'ias').replace('Image', 'Label')
+
+        elif data == 'CADA':
+            origin_path = os.path.join(raw_path, f)
+            label_path = origin_path.replace('CADA-Training_Datasets-NIFTI', 'CADA-Training_MaskImages-NIFTI')
+            label_path = label_path.replace('_orig', '_labeledMasks')
+
         if os.path.exists(origin_path) and os.path.exists(label_path):
             csv_info = nii2csv_info(label_path, f, expand_number=2)
             for index in range(len(csv_info)):
                 info = csv_info[index]
                 csv_writer.writerow(info)
-            # step += 1
-        # if step == 100:
-        #     break
+            step += 1
+        if step == 10:
+            break
     fid.close()
 

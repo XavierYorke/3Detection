@@ -1,14 +1,3 @@
-# Copyright (c) MONAI Consortium
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#     http://www.apache.org/licenses/LICENSE-2.0
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import cv2
 import numpy as np
 
@@ -41,9 +30,7 @@ def visualize_one_xy_slice_in_3d_image(gt_boxes, image, pred_boxes, gt_box_index
         pred_boxes: numpy array sized (N, 6)
     """
     draw_box = gt_boxes[gt_box_index, :]
-    draw_box_center = [
-        round((draw_box[axis] + draw_box[axis + 3] - 1) / 2.0) for axis in range(3)
-    ]
+    draw_box_center = [round((draw_box[axis] + draw_box[axis + 3] - 1) / 2.0) for axis in range(3)]
     draw_box = np.round(draw_box).astype(int).tolist()
     draw_box_z = draw_box_center[2]  # the z-slice we will visualize
 

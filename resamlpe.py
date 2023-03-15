@@ -1,7 +1,9 @@
 import argparse
 import json
+import yaml
 import logging
 import sys
+from tqdm import tqdm
 
 import monai
 import torch
@@ -19,30 +21,20 @@ from monai.transforms import (
 
 
 def main():
-    parser = argparse.ArgumentParser(description="LUNA16 Detection Image Resampling")
-    parser.add_argument(
-        "-e",
-        "--environment-file",
-        default="./config/prepare_temp.json",
-        help="environment json file that stores environment path",
-    )
+    parser = argparse.ArgumentParser(description="Detection Image Resampling")
     parser.add_argument(
         "-c",
-        "--config-file",
-        default="./config/config_train_luna16_16g.json",
-        help="config json file that stores hyper-parameters",
+        "--config",
+        default="./environment/ias/config.yaml",
+        help="config yaml file that stores hyper-parameters",
     )
     args = parser.parse_args()
+    config = open(args.config)
+    config = yaml.load(config, Loader=yaml.FullLoader)
+    resample_config = config['resample_config']
+    data_config = config['data_config']
 
     monai.config.print_config()
-
-    env_dict = json.load(open(args.environment_file, "r"))
-    config_dict = json.load(open(args.config_file, "r"))
-
-    for k, v in env_dict.items():
-        setattr(args, k, v)
-    for k, v in config_dict.items():
-        setattr(args, k, v)
 
     # 1. define transform
     # resample images to args.spacing defined in args.config_file.
@@ -52,12 +44,12 @@ def main():
                 keys=["image"],
                 meta_key_postfix="meta_dict",
                 reader="itkreader",
-                affine_lps_to_ras=True,  # True
+                affine_lps_to_ras=True,
             ),
             EnsureChannelFirstd(keys=["image"]),
             EnsureTyped(keys=["image"], dtype=torch.float16),
-            Orientationd(keys=["image"], axcodes="RAS"),  # RAS
-            Spacingd(keys=["image"], pixdim=args.spacing, padding_mode="border"),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            Spacingd(keys=["image"], pixdim=resample_config['spacing'], padding_mode="border"),
         ]
     )
     # saved images to Nifti
@@ -66,21 +58,21 @@ def main():
             SaveImaged(
                 keys="image",
                 meta_keys="image_meta_dict",
-                output_dir=args.data_base_dir,
+                output_dir=data_config['data_base_dir'],
                 output_postfix="",
-                resample=False,  # False
+                resample=False,
             ),
         ]
     )
 
     # 2. prepare data
-    for data_list_key in ["training", "validation"]:  # , "validation"
+    for data_list_key in ["training", "validation"]:
         # create a data loader
         process_data = load_decathlon_datalist(
-            args.data_list_file_path,
+            data_config['data_list_file_path'],
             is_segmentation=True,
             data_list_key=data_list_key,
-            base_dir=args.orig_data_base_dir,
+            base_dir=resample_config['orig_data_base_dir'],
         )
         process_ds = Dataset(
             data=process_data,
@@ -96,7 +88,7 @@ def main():
         )
 
         print("-" * 10)
-        for batch_data in process_loader:
+        for batch_data in tqdm(process_loader):
             for batch_data_i in batch_data:
                 batch_data_i = post_transforms(batch_data_i)
 

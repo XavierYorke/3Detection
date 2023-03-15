@@ -1,28 +1,20 @@
-# 3D Detection
-
-## 相关链接
-https://github.com/Project-MONAI/tutorials/tree/main/detection
+# IA Detection
 
 ## 数据处理
-``` bash
-python luna16_prepare_env_files.py
-python luna16_prepare_images.py -c ./config/config_train_luna16_16g.json
+
+1. 对数据和标签进行resample
+```bash
+python resample.py
 ```
 
-## 数据集转换
+2. 根据分割标签生成检测标签
 ```bash
-python dataset_conversion/nii2csv.py
-python dataset_conversion/to_json.py
+python data_preparation/nii2csv.py
+python data_preparation/data_analysis.py
 ```
 
 ## 训练
-```bash
-python luna16_training.py \
-    -e ./config/environment_luna16_fold0.json \
-    -c ./config/config_train_luna16_16g.json
-```
 
-## 查看日志
-``` bash
-tensorboard --logdir 
+```bash
+python training.py
 ```
