@@ -1,0 +1,43 @@
+a_describe: 'IAs training'
+
+train_config:
+    seed: 1228
+    lr: 1e-2
+    val_interval: 5
+    max_epochs: 300
+    event_path: 'train_event/IAS'
+    resume: 0                                           # 继续训练的开始轮次
+
+data_config:
+    gt_box_mode: 'cccwhd'
+    patch_size: [96, 96, 64]
+    batch_size: 4
+    data_list_file_path: 'environment/ias/ias.json'     # 数据加载标签，通过data_preparation/get_bbox.py生成
+    data_base_dir: 'D:/Datasets/IAS-S/Image'            # resample后数据路径
+    train_len: 0.95
+    a_min: 0.0
+    a_max: 1000.0
+    train_batch: 1
+
+
+net_config:
+    returned_layers: [1, 2]
+    base_anchor_shapes: [[6,8,4],[8,6,5],[10,10,6]]
+    conv1_t_stride: [2, 2, 1]
+    n_input_channels: 1
+    spatial_dims: 3
+    fg_labels: [0]
+    balanced_sampler_pos_fraction: 0.7
+    score_thresh: 0.02       # 0.02
+    nms_thresh: 0.42        # 0.22
+    val_patch_size: [512, 512, 208]
+    net_path: ''                                        # 加载预训练模型
+
+resample_config:
+    spacing: [0.703125, 0.703125, 1.25]
+    orig_data_base_dir: D:/Datasets/Aneurysm/S/one      # 原始数据路径
+
+test_config:
+    val_patch_size: [512,512,208]
+    model_path:
+    result_list_file_path: result/ias.json

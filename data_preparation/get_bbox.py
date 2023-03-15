@@ -6,6 +6,7 @@ import SimpleITK as sitk
 from skimage import morphology, measure
 
 
+# 将分割标签转换为 bounding box 标签
 def get_bounding_box(nii_path, image_name, expand_number=2):
     img = sitk.ReadImage(nii_path)
     img_arr = sitk.GetArrayFromImage(img)  # (z, y, x)

@@ -10,6 +10,9 @@ import csv
 import os
 import pandas as pd
 import json
+"""
+数据筛选：按标签体素排序后生成前n个数据的训练json文件
+"""
 
 
 if __name__ == '__main__':

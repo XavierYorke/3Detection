@@ -2,6 +2,9 @@ import os
 import csv
 import SimpleITK as sitk
 import nibabel as nib
+"""
+用于数据分析
+"""
 
 
 def get_spacing(file_path):

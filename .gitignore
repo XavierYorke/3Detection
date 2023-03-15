@@ -1,5 +1,8 @@
-environment/
 objs/
 train_event/
 result/
 data_preparation/saved/
+environment/CADA/
+environment/ias/
+environment/luna16/
+environment/Lung/

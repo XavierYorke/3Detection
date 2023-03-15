@@ -38,6 +38,8 @@ def distribution_show(img):
     plt.show()
 
 
+# 统计标签的体素，强度范围以及数据shape
+# result用于查看所有图像的标签强度分布情况，返回后用上面的可视化函数生成结果
 def main(base_root, origin, label):
     # result = []
     for root, dirs, files in os.walk(base_root):
