@@ -19,9 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def main(seed, lr, event_path,
-        val_interval, max_epochs,
-        resume, val_patch_size):
+def main(seed, lr, event_path, val_interval, max_epochs, resume, val_patch_size):
     set_determinism(seed)
 
     amp = True
@@ -92,12 +90,12 @@ def main(seed, lr, event_path,
         for batch_data in train_loader:     # batch_size(16) * list - batch_size(4) * list - box image label
             step += 1
             inputs = [      # batch_size(16) * batch_size(4)
-                batch_data_ii["image"].to(device).contiguous() for batch_data_i in batch_data for batch_data_ii in batch_data_i
+                batch_data_ii["image"].to(device) for batch_data_i in batch_data for batch_data_ii in batch_data_i
             ]
             targets = [
                 dict(
-                    label=batch_data_ii["label"].to(device).contiguous(),
-                    box=batch_data_ii["box"].to(device).contiguous(),
+                    label=batch_data_ii["label"].to(device),
+                    box=batch_data_ii["box"].to(device),
                 )
                 for batch_data_i in batch_data
                 for batch_data_ii in batch_data_i
@@ -254,8 +252,8 @@ def main(seed, lr, event_path,
 
 def parser_args():
     parser = argparse.ArgumentParser(description="3D Detection Training")
-    parser.add_argument('-c', '--config', default='./environment/ias/config.yaml')
-    # parser.add_argument('-c', '--config', default='./environment/Lung/config.yaml')
+    # parser.add_argument('-c', '--config', default='./environment/ias/config.yaml')
+    parser.add_argument('-c', '--config', default='./environment/Lung/config.yaml')
     # parser.add_argument('-c', '--config', default='./environment/ias/config-A.yaml')
     # parser.add_argument('-c', '--config', default='./environment/luna16/luna16_config.yaml')
     # parser.add_argument('-c', '--config', default='./environment/CADA/config.yaml')
